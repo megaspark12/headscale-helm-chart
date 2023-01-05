@@ -1,0 +1,140 @@
+# Default values for headscale-chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+server:
+  replicaCount: 1
+
+  image:
+    repository: headscale/headscale
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+
+  podAnnotations: {}
+
+  podSecurityContext: {}
+
+  securityContext: {}
+
+client:
+  enabled: false
+  replicaCount: 2
+
+  image:
+    repository: tailscale/tailscale
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+
+  podAnnotations: {}
+
+  podSecurityContext: {}
+
+  securityContext: {}
+  
+
+service:
+  type: NodePort
+  server:
+    port: 8080
+  metrics: 
+    port: 9090
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+configmap:
+  enabled: true
+  configFileName: "config.yaml"
+  name: headscale
+  configuration: |-
+    server_url: http://0.0.0.0:8080
+    listen_addr: 0.0.0.0:8080
+    metrics_listen_addr: 0.0.0.0:9090
+    grpc_listen_addr: 0.0.0.0:50443
+    grpc_allow_insecure: false
+    private_key_path: ./private.key
+    noise:
+      private_key_path: ./noise_private.key
+    ip_prefixes:
+      - fd7a:115c:a1e0::/48
+      - 100.64.0.0/10
+    derp:
+      server:
+        enabled: false
+        region_id: 999
+        region_code: "headscale"
+        region_name: "Headscale Embedded DERP"
+        stun_listen_addr: "0.0.0.0:3478"
+      urls:
+        - https://controlplane.tailscale.com/derpmap/default
+      paths: []
+      auto_update_enabled: true
+      update_frequency: 24h
+    disable_check_updates: false
+    ephemeral_node_inactivity_timeout: 30m
+    node_update_check_interval: 10s
+    db_type: sqlite3
+    db_path: ./db.sqlite
+    acme_url: https://acme-v02.api.letsencrypt.org/directory
+    acme_email: ""
+    tls_letsencrypt_hostname: ""
+    tls_letsencrypt_cache_dir: ./cache
+    tls_letsencrypt_challenge_type: HTTP-01
+    tls_letsencrypt_listen: ":http"
+    tls_cert_path: ""
+    tls_key_path: ""
+    log:
+      format: text
+      level: info
+    acl_policy_path: ""
+    dns_config:
+      override_local_dns: true
+      nameservers:
+        - 1.1.1.1
+      domains: []
+      magic_dns: true
+      base_domain: example.com
+    unix_socket: ./headscale.sock
+    unix_socket_permission: "0770"
+    logtail:
+      enabled: false
+    randomize_client_port: false

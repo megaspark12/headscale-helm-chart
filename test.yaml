@@ -1,0 +1,151 @@
+---
+# Source: headscale-chart/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: headscale-config
+data:
+  config.yaml: |-
+    server_url: http://0.0.0.0:8080
+    listen_addr: 0.0.0.0:8080
+    metrics_listen_addr: 0.0.0.0:9090
+    grpc_listen_addr: 0.0.0.0:50443
+    grpc_allow_insecure: false
+    private_key_path: ./private.key
+    noise:
+      private_key_path: ./noise_private.key
+    ip_prefixes:
+      - fd7a:115c:a1e0::/48
+      - 100.64.0.0/10
+    derp:
+      server:
+        enabled: false
+        region_id: 999
+        region_code: "headscale"
+        region_name: "Headscale Embedded DERP"
+        stun_listen_addr: "0.0.0.0:3478"
+      urls:
+        - https://controlplane.tailscale.com/derpmap/default
+      paths: []
+      auto_update_enabled: true
+      update_frequency: 24h
+    disable_check_updates: false
+    ephemeral_node_inactivity_timeout: 30m
+    node_update_check_interval: 10s
+    db_type: sqlite3
+    db_path: ./db.sqlite
+    acme_url: https://acme-v02.api.letsencrypt.org/directory
+    acme_email: ""
+    tls_letsencrypt_hostname: ""
+    tls_letsencrypt_cache_dir: ./cache
+    tls_letsencrypt_challenge_type: HTTP-01
+    tls_letsencrypt_listen: ":http"
+    tls_cert_path: ""
+    tls_key_path: ""
+    log:
+      format: text
+      level: info
+    acl_policy_path: ""
+    dns_config:
+      override_local_dns: true
+      nameservers:
+        - 1.1.1.1
+      domains: []
+      magic_dns: true
+      base_domain: example.com
+    unix_socket: ./headscale.sock
+    unix_socket_permission: "0770"
+    logtail:
+      enabled: false
+    randomize_client_port: false
+---
+# Source: headscale-chart/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-headscale-chart
+  labels:
+    helm.sh/chart: headscale-chart-0.1.0
+    app.kubernetes.io/name: headscale-chart
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: http
+      protocol: TCP
+      name: server
+    - port: 9090
+      targetPort: http
+      protocol: TCP
+      name: metrics
+  selector:
+    app.kubernetes.io/name: headscale-chart
+    app.kubernetes.io/instance: test
+---
+# Source: headscale-chart/templates/server-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server-test
+  labels:
+    helm.sh/chart: headscale-chart-0.1.0
+    app.kubernetes.io/name: headscale-chart
+    app.kubernetes.io/instance: test
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: headscale-chart
+      app.kubernetes.io/instance: test
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: headscale-chart
+        app.kubernetes.io/instance: test
+    spec:
+      securityContext:
+        {}
+      containers:
+        - name: headscale-chart
+          securityContext:
+            {}
+          image: "headscale/headscale:latest"
+          imagePullPolicy: IfNotPresent
+          command: ["headscale"]
+          args: ["serve"]
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          # livenessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: http
+          # readinessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: http
+          resources:
+            {}
+          volumeMounts:
+          - name: headscale-config-volume
+            mountPath: /etc/headscale/config.yaml
+            subPath: config.yaml
+          - name: emptydir-volume
+            mountPath: /etc/headscale
+      volumes:
+      - name: headscale-config-volume
+        configMap:
+          name: headscale-config
+      - name: emptydir-volume
+        emptyDir: {}
