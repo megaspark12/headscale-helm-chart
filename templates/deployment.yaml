@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: server-{{ .Release.Name }}
+  name: {{ include "headscale-chart.name" . }}
   labels:
     {{- include "headscale-chart.labels" . | nindent 4 }}
 spec:
@@ -35,20 +35,20 @@ spec:
           command: ["headscale"]
           args: ["serve"]
           ports:
-            - name: http
+            - name: tcp
               containerPort: 8080
               protocol: TCP
             - name: metrics
               containerPort: 9090
               protocol: TCP
           livenessProbe:
-            httpGet:
-              path: /
-              port: http
+            tcpSocket:
+              port: tcp
+            periodSeconds: 5
           readinessProbe:
-            httpGet:
-              path: /
-              port: http
+            tcpSocket:
+              port: tcp
+            periodSeconds: 5
           resources:
             {{- toYaml .Values.server.resources | nindent 12 }}
           volumeMounts:
@@ -74,6 +74,6 @@ spec:
       volumes:
       - name: {{ .Values.configmap.name }}-config-volume
         configMap:
-          name: {{ .Values.configmap.name }}-config
+          name: {{ include "headscale-chart.name" . }}-cm
       - name: emptydir-volume
         emptyDir: {}
